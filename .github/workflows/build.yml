@@ -1,0 +1,126 @@
+name: Build FFmpeg
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            target: macos-arm64
+            configure_args: --enable-pthreads --enable-neon
+          - os: macos-13
+            target: macos-x64
+            configure_args: --enable-pthreads
+          - os: ubuntu-latest
+            target: linux-x64
+            configure_args: --enable-pthreads
+          - os: ubuntu-latest
+            target: windows-x64
+            configure_args: --enable-w32threads --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- --arch=x86_64
+          - os: ubuntu-latest
+            target: linux-arm64
+            configure_args: --enable-pthreads --enable-neon
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Prepare build script
+      run: |
+        echo "
+        ./configure \
+          --disable-everything \
+          --disable-autodetect \
+          --disable-encoders \
+          --disable-decoders \
+          --enable-decoder='h264,aac' \
+          --enable-encoder=aac \
+          --enable-parser='h264,aac,mp3' \
+          --enable-demuxer='flv,h264,aac,mp3,live_flv' \
+          --enable-muxer='flv,mp4' \
+          --enable-protocol='file,pipe' \
+          --enable-bsf='h264_mp4toannexb,aac_adtstoasc' \
+          --disable-avdevice \
+          --disable-swscale \
+          --disable-postproc \
+          --disable-doc \
+          --disable-runtime-cpudetect \
+          --disable-network \
+          --enable-gpl \
+          --enable-version3 \
+          --enable-avcodec \
+          --enable-avformat \
+          --enable-swresample \
+          --enable-avfilter \
+          --disable-programs \
+          --enable-ffmpeg \
+          --enable-small \
+          --disable-debug \
+          ${{ matrix.configure_args }} \
+          --pkg-config=pkg-config
+        " > configure_script.sh
+        chmod +x ./configure_script.sh
+
+    - name: Install dependencies linux-x64
+      if: matrix.target == 'linux-x64'
+      run: |
+        sudo apt update
+        sudo apt install nasm
+
+    - name: Install dependencies windows-x64
+      if: matrix.target == 'windows-x64'
+      run: |
+        sudo apt update
+        sudo apt install mingw-w64 nasm
+
+    - name: Build macos-arm64
+      if: matrix.target == 'macos-arm64' || matrix.target == 'macos-x64'
+      run: |
+        brew install nasm
+
+    - name: Build linux-arm64
+      if: matrix.target == 'linux-arm64'
+      run: |
+        docker run --rm dockcross/linux-arm64 > ./dockcross-linux-arm64
+        chmod +x ./dockcross-linux-arm64
+        ./dockcross-linux-arm64 ./configure_script.sh
+        ./dockcross-linux-arm64 make
+
+    - name: Build general
+      if: matrix.target != 'linux-arm64'
+      run: |
+        ./configure_script.sh
+        make
+
+    - name: Upload FFmpeg as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffmpeg-${{ matrix.target }}
+        path: ./ffmpeg*
+
+  publish_release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Download FFmpeg artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ffmpeg*
+        merge-multiple: true
+        path: artifacts
+
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        set -xe
+        shopt -s nullglob
+        RELDATE=$(date +'%Y-%m-%d %H:%M:%S')
+        RELEASE_NAME="FFmpeg $RELDATE"
+        TAGNAME="autobuild-$(date +'%Y-%m-%d-%H-%M-%S')"
+        gh release create "$TAGNAME" --target "develop" --title "$RELEASE_NAME" artifacts/*
+    
