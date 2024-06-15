@@ -1,0 +1,16 @@
+{
+  "name": "FFmpeg Dev Container",
+  "dockerFile": "Dockerfile",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+      },
+      "extensions": [
+        "ms-vscode.cpptools-extension-pack",
+        "foxundermoon.shell-format"
+      ]
+    }
+  },
+  "forwardPorts": []
+}

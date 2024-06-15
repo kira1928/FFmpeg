@@ -1311,6 +1311,16 @@ retry_duration:
             st->codecpar->codec_id == AV_CODEC_ID_AV1 || st->codecpar->codec_id == AV_CODEC_ID_VP9)) {
             AVDictionaryEntry *t;
 
+            // abort program when meeting the second sequence header
+            if (stream_type == FLV_STREAM_TYPE_VIDEO) {
+                static int s_video_header_count = 0;
+                ++s_video_header_count;
+                if (s_video_header_count > 1) {
+                    av_log(s, AV_LOG_FATAL, "[xlive]EOF new sps pps\n");
+                    return -1;
+                }
+            }
+
             if (st->codecpar->extradata) {
                 if ((ret = flv_queue_extradata(flv, s->pb, stream_type, size)) < 0)
                     return ret;
