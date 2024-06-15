@@ -2,6 +2,17 @@ name: Build FFmpeg
 
 on:
   workflow_dispatch:
+    inputs:
+      doRelease:
+        description: 'Publish new release'
+        type: boolean
+        default: false
+        required: false
+      buildOnly:
+        description: 'Only build ffmpeg'
+        type: boolean
+        default: false
+        required: false
 
 jobs:
   build:
@@ -103,6 +114,8 @@ jobs:
         path: ./ffmpeg*
 
   publish_release:
+    name: Publish release
+    if: ${{ !cancelled() && github.event.inputs.doRelease == true && needs.build.result == 'success' }}
     needs: build
     runs-on: ubuntu-latest
     steps:
