@@ -104,7 +104,7 @@ jobs:
     - name: Zip artifacts
       run: |
         for dir in artifacts/*; do
-          zip -j -r "${dir##*/}.zip" "$dir"
+          zip -j -r "artifacts/${dir##*/}.zip" "$dir"
         done
 
     - name: Create release
