@@ -5,7 +5,7 @@
       "label": "build ffmpeg linux x64 if not exist",
       "type": "shell",
       "command": [
-        "./xlive/build.sh"
+        "./xlive/dev_build.sh"
       ],
       "group": {
         "kind": "build",

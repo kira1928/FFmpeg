@@ -1,7 +1,6 @@
 #!/bin/bash
 
-if [ ! -f "./ffmpeg" ]; then
-  ./configure \
+./configure \
     --disable-everything \
     --disable-autodetect \
     --disable-encoders \
@@ -27,11 +26,5 @@ if [ ! -f "./ffmpeg" ]; then
     --enable-avfilter \
     --disable-programs \
     --enable-ffmpeg \
-    --enable-debug=3 \
-    --disable-optimizations \
-    --enable-pthreads \
-    --pkg-config=pkg-config \
-    --disable-stripping
-
-  make -j$(nproc)
-fi
+    "$@" \
+    --pkg-config=pkg-config

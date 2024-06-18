@@ -42,39 +42,8 @@ jobs:
 
     - name: Prepare build script
       run: |
-        echo "
-        ./configure \
-          --disable-everything \
-          --disable-autodetect \
-          --disable-encoders \
-          --disable-decoders \
-          --enable-decoder='h264,aac' \
-          --enable-encoder=aac \
-          --enable-parser='h264,aac,mp3' \
-          --enable-demuxer='flv,h264,aac,mp3,live_flv' \
-          --enable-muxer='flv,mp4' \
-          --enable-protocol='file,pipe' \
-          --enable-bsf='h264_mp4toannexb,aac_adtstoasc' \
-          --disable-avdevice \
-          --disable-swscale \
-          --disable-postproc \
-          --disable-doc \
-          --disable-runtime-cpudetect \
-          --disable-network \
-          --enable-gpl \
-          --enable-version3 \
-          --enable-avcodec \
-          --enable-avformat \
-          --enable-swresample \
-          --enable-avfilter \
-          --disable-programs \
-          --enable-ffmpeg \
-          --enable-small \
-          --disable-debug \
-          ${{ matrix.configure_args }} \
-          --pkg-config=pkg-config
-        " > configure_script.sh
-        chmod +x ./configure_script.sh
+        chmod +x ./xlive/configure_script.sh
+        echo "CONFIGURE_ARGS=--enable-small --disable-debug ${{ matrix.configure_args }}" >> $GITHUB_ENV
 
     - name: Install dependencies linux-x64
       if: matrix.target == 'linux-x64'
@@ -98,14 +67,14 @@ jobs:
       run: |
         docker run --rm dockcross/linux-arm64 > ./dockcross-linux-arm64
         chmod +x ./dockcross-linux-arm64
-        ./dockcross-linux-arm64 ./configure_script.sh
-        ./dockcross-linux-arm64 make
+        ./dockcross-linux-arm64 xlive/configure_script.sh ${{ env.CONFIGURE_ARGS }}
+        ./dockcross-linux-arm64 make -j$(nproc)
 
     - name: Build general
       if: matrix.target != 'linux-arm64'
       run: |
-        ./configure_script.sh
-        make
+        xlive/configure_script.sh ${{ env.CONFIGURE_ARGS }}
+        make -j$(nproc)
 
     - name: Upload FFmpeg as artifact
       uses: actions/upload-artifact@v4
