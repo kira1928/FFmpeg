@@ -80,7 +80,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ffmpeg-${{ matrix.target }}
-        path: ./ffmpeg*
+        path: |
+          ./ffmpeg
+          ./ffmpeg.exe
+        if-no-files-found: error
 
   publish_release:
     name: Publish release
@@ -88,12 +91,21 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - name: Download FFmpeg artifacts
       uses: actions/download-artifact@v4
       with:
         pattern: ffmpeg*
-        merge-multiple: true
+        merge-multiple: false
         path: artifacts
+
+    - name: Zip artifacts
+      run: |
+        for dir in artifacts/*; do
+          zip -j -r "artifacts/${dir##*/}.zip" "$dir"
+        done
 
     - name: Create release
       env:
@@ -104,5 +116,5 @@ jobs:
         RELDATE=$(date +'%Y-%m-%d %H:%M:%S')
         RELEASE_NAME="FFmpeg $RELDATE"
         TAGNAME="autobuild-$(date +'%Y-%m-%d-%H-%M-%S')"
-        gh release create "$TAGNAME" --target "develop" --title "$RELEASE_NAME" artifacts/*
+        gh release create "$TAGNAME" --target "develop" --title "$RELEASE_NAME" artifacts/*.zip
     

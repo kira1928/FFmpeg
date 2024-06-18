@@ -12,5 +12,9 @@
       ]
     }
   },
-  "forwardPorts": []
+  "forwardPorts": [],
+  "mounts": [
+    "source=${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "chmod 600 /root/.ssh/*"
 }
