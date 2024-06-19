@@ -116,5 +116,5 @@ jobs:
         RELDATE=$(date +'%Y-%m-%d %H:%M:%S')
         RELEASE_NAME="FFmpeg $RELDATE"
         TAGNAME="autobuild-$(date +'%Y-%m-%d-%H-%M-%S')"
-        gh release create "$TAGNAME" --target "develop" --title "$RELEASE_NAME" artifacts/*.zip
+        gh release create "$TAGNAME" --target "${{ github.ref }}" --title "$RELEASE_NAME" artifacts/*.zip
     
