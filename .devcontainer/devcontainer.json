@@ -8,7 +8,8 @@
       },
       "extensions": [
         "ms-vscode.cpptools-extension-pack",
-        "foxundermoon.shell-format"
+        "foxundermoon.shell-format",
+        "github.vscode-github-actions"
       ]
     }
   },
