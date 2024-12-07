@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build ffmpeg linux x64 if not exist",
+      "type": "shell",
+      "command": [
+        "./xlive/dev_build.sh"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

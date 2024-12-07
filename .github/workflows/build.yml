@@ -1,0 +1,120 @@
+name: Build FFmpeg
+
+on:
+  workflow_dispatch:
+    inputs:
+      doRelease:
+        description: 'Publish new release'
+        type: boolean
+        default: false
+        required: false
+      buildOnly:
+        description: 'Only build ffmpeg'
+        type: boolean
+        default: false
+        required: false
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            target: macos-arm64
+            configure_args: --enable-pthreads --enable-neon
+          - os: macos-13
+            target: macos-x64
+            configure_args: --enable-pthreads
+          - os: ubuntu-latest
+            target: linux-x64
+            configure_args: --enable-pthreads
+          - os: ubuntu-latest
+            target: windows-x64
+            configure_args: --enable-w32threads --target-os=mingw32 --cross-prefix=x86_64-w64-mingw32- --arch=x86_64
+          - os: ubuntu-latest
+            target: linux-arm64
+            configure_args: --enable-pthreads --enable-neon
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Prepare build script
+      run: |
+        chmod +x ./xlive/configure_script.sh
+        echo "CONFIGURE_ARGS=--enable-small --disable-debug ${{ matrix.configure_args }}" >> $GITHUB_ENV
+
+    - name: Install dependencies linux-x64
+      if: matrix.target == 'linux-x64'
+      run: |
+        sudo apt update
+        sudo apt install nasm
+
+    - name: Install dependencies windows-x64
+      if: matrix.target == 'windows-x64'
+      run: |
+        sudo apt update
+        sudo apt install mingw-w64 nasm
+
+    - name: Build macos-arm64
+      if: matrix.target == 'macos-arm64' || matrix.target == 'macos-x64'
+      run: |
+        brew install nasm
+
+    - name: Build linux-arm64
+      if: matrix.target == 'linux-arm64'
+      run: |
+        docker run --rm dockcross/linux-arm64 > ./dockcross-linux-arm64
+        chmod +x ./dockcross-linux-arm64
+        ./dockcross-linux-arm64 xlive/configure_script.sh ${{ env.CONFIGURE_ARGS }}
+        ./dockcross-linux-arm64 make -j$(nproc)
+
+    - name: Build general
+      if: matrix.target != 'linux-arm64'
+      run: |
+        xlive/configure_script.sh ${{ env.CONFIGURE_ARGS }}
+        make -j$(nproc)
+
+    - name: Upload FFmpeg as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffmpeg-${{ matrix.target }}
+        path: |
+          ./ffmpeg
+          ./ffmpeg.exe
+        if-no-files-found: error
+
+  publish_release:
+    name: Publish release
+    if: ${{ !cancelled() && github.event.inputs.doRelease == 'true' && needs.build.result == 'success' }}
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download FFmpeg artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: ffmpeg*
+        merge-multiple: false
+        path: artifacts
+
+    - name: Zip artifacts
+      run: |
+        for dir in artifacts/*; do
+          zip -j -r "artifacts/${dir##*/}.zip" "$dir"
+        done
+
+    - name: Create release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      run: |
+        set -xe
+        shopt -s nullglob
+        RELDATE=$(date +'%Y-%m-%d %H:%M:%S')
+        RELEASE_NAME="FFmpeg $RELDATE"
+        TAGNAME="autobuild-$(date +'%Y-%m-%d-%H-%M-%S')"
+        gh release create "$TAGNAME" --target "${{ github.ref }}" --title "$RELEASE_NAME" artifacts/*.zip
+    

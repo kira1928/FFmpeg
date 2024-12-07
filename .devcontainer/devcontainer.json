@@ -1,0 +1,21 @@
+{
+  "name": "FFmpeg Dev Container",
+  "dockerFile": "Dockerfile",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+      },
+      "extensions": [
+        "ms-vscode.cpptools-extension-pack",
+        "foxundermoon.shell-format",
+        "github.vscode-github-actions"
+      ]
+    }
+  },
+  "forwardPorts": [],
+  "mounts": [
+    "source=${localEnv:USERPROFILE}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "chmod 600 /root/.ssh/*"
+}
